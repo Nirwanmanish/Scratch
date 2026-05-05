@@ -1,7 +1,6 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html>
 <head>
-  <title>Scratch Reveal</title>
+  <title>Premium Scratch Card</title>
   <style>
     body {
       margin: 0;
@@ -13,34 +12,62 @@
     }
     canvas {
       border-radius: 20px;
+      box-shadow: 0 0 30px rgba(255,255,255,0.2);
     }
   </style>
 </head>
-<body>
+<body><canvas id="canvas"></canvas>
 
-<canvas id="canvas"></canvas>
+<!-- Scratch sound --><audio id="scratchSound" src="scratch.mp3" preload="auto"></audio>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const sound = document.getElementById("scratchSound");
 
 canvas.width = 360;
 canvas.height = 640;
 
-// Load images
-const bg = new Image();   // poem image
-const cover = new Image(); // shinchan image
+// Images
+const bg = new Image();        // poem
+const shinchan = new Image();  // top print
 
-bg.src = "Poem.jpg";       // <-- put your poem image
-cover.src = "shinchan.jpg"; // <-- put shinchan image
+bg.src = "poem.jpg";
+shinchan.src = "shinchan.jpg";
+
+// Create silver layer
+function createSilverLayer() {
+  let grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  grad.addColorStop(0, "#c0c0c0");
+  grad.addColorStop(0.5, "#f5f5f5");
+  grad.addColorStop(1, "#a9a9a9");
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // noise texture
+  for (let i = 0; i < 10000; i++) {
+    let x = Math.random() * canvas.width;
+    let y = Math.random() * canvas.height;
+    let alpha = Math.random() * 0.25;
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fillRect(x, y, 1, 1);
+  }
+}
 
 bg.onload = () => {
   ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
 
-  cover.onload = () => {
-    ctx.globalCompositeOperation = "source-over";
-    ctx.drawImage(cover, 0, 0, canvas.width, canvas.height);
+  shinchan.onload = () => {
+    // Silver base
+    createSilverLayer();
 
+    // Shinchan printed ON silver
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(shinchan, 0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+
+    // Enable scratch
     ctx.globalCompositeOperation = "destination-out";
 
     let isDrawing = false;
@@ -52,8 +79,12 @@ bg.onload = () => {
       let x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
       let y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
 
+      // Play sound
+      sound.currentTime = 0;
+      sound.play();
+
       ctx.beginPath();
-      ctx.arc(x, y, 20, 0, Math.PI * 2);
+      ctx.arc(x, y, 25, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -66,7 +97,5 @@ bg.onload = () => {
     canvas.addEventListener("touchmove", scratch);
   };
 };
-</script>
-
-</body>
+</script></body>
 </html>
