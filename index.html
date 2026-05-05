@@ -28,12 +28,12 @@ const sound = document.getElementById("scratchSound");
 canvas.width = 360;
 canvas.height = 640;
 
-// Images
-const bg = new Image();        // poem
-const shinchan = new Image();  // top print
+// Images (MATCH YOUR FILE NAMES EXACTLY)
+const bg = new Image();
+const shinchan = new Image();
 
-bg.src = "poem.jpg";
-shinchan.src = "shinchan.jpg";
+bg.src = "Poem.jpg";        // ✅ capital P
+shinchan.src = "shinchan.jpg"; // ✅ jpg
 
 // Create silver layer
 function createSilverLayer() {
@@ -56,9 +56,12 @@ function createSilverLayer() {
 }
 
 bg.onload = () => {
+  console.log("Poem loaded ✅");
   ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
 
   shinchan.onload = () => {
+    console.log("Shinchan loaded ✅");
+
     // Silver base
     createSilverLayer();
 
@@ -79,9 +82,10 @@ bg.onload = () => {
       let x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
       let y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
 
-      // Play sound
-      sound.currentTime = 0;
-      sound.play();
+      // Play sound (mobile safe)
+      if (sound.paused) {
+        sound.play().catch(()=>{});
+      }
 
       ctx.beginPath();
       ctx.arc(x, y, 25, 0, Math.PI * 2);
@@ -92,10 +96,22 @@ bg.onload = () => {
     canvas.addEventListener("mouseup", () => isDrawing = false);
     canvas.addEventListener("mousemove", scratch);
 
-    canvas.addEventListener("touchstart", () => isDrawing = true);
-    canvas.addEventListener("touchend", () => isDrawing = false);
+    canvas.addEventListener("touchstart", () => {
+      isDrawing = true;
+      sound.play().catch(()=>{});
+    });
+
+    canvas.addEventListener("touchend", () => {
+      isDrawing = false;
+      sound.pause();
+    });
+
     canvas.addEventListener("touchmove", scratch);
   };
+
+  shinchan.onerror = () => alert("Shinchan image not found ❌");
 };
+
+bg.onerror = () => alert("Poem image not found ❌");
 </script></body>
 </html>
