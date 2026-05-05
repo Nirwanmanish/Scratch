@@ -1,6 +1,6 @@
 <!DOCTYPE html><html>
 <head>
-  <title>Ultra Scratch Card</title>
+  <title>Ultimate Scratch Card</title>
   <style>
     body {
       margin: 0;
@@ -12,20 +12,17 @@
     }
     canvas {
       border-radius: 20px;
-      box-shadow: 0 0 30px rgba(255,255,255,0.2);
       touch-action: none;
     }
   </style>
 </head>
 <body><canvas id="canvas"></canvas>
-<audio id="scratchSound" src="scratch.mp3" loop></audio>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-const sound = document.getElementById("scratchSound");
 
-// 📱 Responsive size
+// 📱 Responsive
 let ratio = window.devicePixelRatio || 1;
 let width = Math.min(window.innerWidth * 0.9, 420);
 let height = width * 1.7;
@@ -38,119 +35,141 @@ canvas.height = height * ratio;
 ctx.scale(ratio, ratio);
 
 // Images
-const bg = new Image();
+const poem = new Image();
 const shinchan = new Image();
 
-bg.src = "Poem.jpg";
+poem.src = "Poem.jpg";
 shinchan.src = "shinchan.jpg";
 
-// 🪙 Silver layer
-function createSilverLayer() {
-  let grad = ctx.createLinearGradient(0, 0, width, height);
-  grad.addColorStop(0, "#cfcfcf");
-  grad.addColorStop(0.5, "#f5f5f5");
-  grad.addColorStop(1, "#9e9e9e");
+// Scratch mask canvas (important)
+const maskCanvas = document.createElement("canvas");
+const maskCtx = maskCanvas.getContext("2d");
 
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
+maskCanvas.width = width;
+maskCanvas.height = height;
 
-  // noise
-  for (let i = 0; i < 6000; i++) {
-    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.2})`;
-    ctx.fillRect(Math.random()*width, Math.random()*height, 1, 1);
+// Fill mask with silver
+function drawSilver() {
+  let grad = maskCtx.createLinearGradient(0,0,width,height);
+  grad.addColorStop(0,"#cfcfcf");
+  grad.addColorStop(0.5,"#f5f5f5");
+  grad.addColorStop(1,"#9e9e9e");
+
+  maskCtx.fillStyle = grad;
+  maskCtx.fillRect(0,0,width,height);
+
+  for(let i=0;i<6000;i++){
+    maskCtx.fillStyle = `rgba(255,255,255,${Math.random()*0.2})`;
+    maskCtx.fillRect(Math.random()*width,Math.random()*height,1,1);
   }
 }
 
-// ✨ Glitter particles
-let particles = [];
-
-function addParticles(x, y) {
-  for (let i = 0; i < 6; i++) {
+// Glitter
+let particles=[];
+function addParticles(x,y){
+  for(let i=0;i<5;i++){
     particles.push({
-      x, y,
-      vx: (Math.random()-0.5)*2,
-      vy: (Math.random()-0.5)*2,
-      life: 30
+      x,y,
+      vx:(Math.random()-0.5)*2,
+      vy:(Math.random()-0.5)*2,
+      life:25
     });
   }
 }
 
-function drawParticles() {
-  particles.forEach(p => {
-    ctx.fillStyle = "rgba(255,215,0," + (p.life/30) + ")";
-    ctx.fillRect(p.x, p.y, 2, 2);
-    p.x += p.vx;
-    p.y += p.vy;
+function drawParticles(){
+  particles.forEach(p=>{
+    ctx.fillStyle=`rgba(255,215,0,${p.life/25})`;
+    ctx.fillRect(p.x,p.y,2,2);
+    p.x+=p.vx;
+    p.y+=p.vy;
     p.life--;
   });
-  particles = particles.filter(p => p.life > 0);
+  particles=particles.filter(p=>p.life>0);
 }
 
-// Draw everything
-bg.onload = () => {
-  ctx.drawImage(bg, 0, 0, width, height);
+// Scratch tracking
+let scratchedPixels = 0;
+let totalPixels = width * height;
+let revealDone = false;
 
-  shinchan.onload = () => {
-    createSilverLayer();
+function scratch(x,y){
+  maskCtx.globalCompositeOperation="destination-out";
+  maskCtx.beginPath();
+  maskCtx.arc(x,y,22,0,Math.PI*2);
+  maskCtx.fill();
 
-    ctx.globalAlpha = 0.9;
-    ctx.drawImage(shinchan, 0, 0, width, height);
-    ctx.globalAlpha = 1;
+  scratchedPixels += 1500; // approx
+  addParticles(x,y);
 
-    ctx.globalCompositeOperation = "destination-out";
+  if(!revealDone && scratchedPixels/totalPixels > 0.7){
+    revealDone = true;
+    fadeToPoem();
+  }
+}
 
-    let isDrawing = false;
-
-    function getPos(e) {
-      let rect = canvas.getBoundingClientRect();
-      return {
-        x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left,
-        y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top
-      };
+// Smooth reveal
+let revealAlpha = 0;
+function fadeToPoem(){
+  let interval = setInterval(()=>{
+    revealAlpha += 0.05;
+    if(revealAlpha >= 1){
+      revealAlpha = 1;
+      clearInterval(interval);
     }
+  },30);
+}
 
-    function scratch(e) {
-      if (!isDrawing) return;
+// Draw loop
+function draw(){
+  ctx.clearRect(0,0,width,height);
 
-      let {x, y} = getPos(e);
+  // Base = poem
+  ctx.drawImage(poem,0,0,width,height);
 
-      ctx.beginPath();
-      ctx.arc(x, y, 22, 0, Math.PI*2);
-      ctx.fill();
+  // Silver + Shinchan layer
+  ctx.globalAlpha = 1 - revealAlpha;
+  ctx.drawImage(maskCanvas,0,0,width,height);
+  ctx.drawImage(shinchan,0,0,width,height);
 
-      addParticles(x, y);
-    }
+  ctx.globalAlpha = 1;
 
-    canvas.addEventListener("mousedown", () => {
-      isDrawing = true;
-      sound.play().catch(()=>{});
-    });
+  drawParticles();
 
-    canvas.addEventListener("mouseup", () => {
-      isDrawing = false;
-      sound.pause();
-    });
+  requestAnimationFrame(draw);
+}
 
-    canvas.addEventListener("mousemove", scratch);
+// Input
+let isDrawing=false;
 
-    canvas.addEventListener("touchstart", (e) => {
-      isDrawing = true;
-      sound.play().catch(()=>{});
-    });
+function getPos(e){
+  let rect = canvas.getBoundingClientRect();
+  return {
+    x:(e.touches?e.touches[0].clientX:e.clientX)-rect.left,
+    y:(e.touches?e.touches[0].clientY:e.clientY)-rect.top
+  };
+}
 
-    canvas.addEventListener("touchend", () => {
-      isDrawing = false;
-      sound.pause();
-    });
+canvas.addEventListener("mousedown",()=>isDrawing=true);
+canvas.addEventListener("mouseup",()=>isDrawing=false);
+canvas.addEventListener("mousemove",(e)=>{
+  if(!isDrawing) return;
+  let p=getPos(e);
+  scratch(p.x,p.y);
+});
 
-    canvas.addEventListener("touchmove", scratch);
+canvas.addEventListener("touchstart",()=>isDrawing=true);
+canvas.addEventListener("touchend",()=>isDrawing=false);
+canvas.addEventListener("touchmove",(e)=>{
+  let p=getPos(e);
+  scratch(p.x,p.y);
+});
 
-    // ✨ animation loop
-    function animate() {
-      requestAnimationFrame(animate);
-      drawParticles();
-    }
-    animate();
+// Load + start
+poem.onload = ()=>{
+  shinchan.onload = ()=>{
+    drawSilver();
+    draw();
   };
 };
 </script></body>
